@@ -1,0 +1,18 @@
+{
+  "window": {
+    "x": 40,
+    "y": 40,
+    "width": 640,
+    "height": 300,
+    "opacity": 70,
+    "always_on_top": true
+  },
+  "hotkeys": {
+    "toggle_overlay": "F9",
+    "toggle_opacity": "F10"
+  },
+  "auto_start_with_dota": false,
+  "show_tray_icon": true,
+  "first_run": false,
+  "steam_path": "C:\\Program Files (x86)\\Steam"
+}

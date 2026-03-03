@@ -1,0 +1,6 @@
+PyQt6
+PyQt6-WebEngine
+websockets>=12.0
+pystray
+Pillow
+keyboard

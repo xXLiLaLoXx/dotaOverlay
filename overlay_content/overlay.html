@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Dota 2 Overlay</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   WIN11 STYLE — Blue palette + Mica/Acrylic glass effect
+   001D39 · 0A4174 · 49769F · 4E8EA2 · 6EA2B3 · 7BBDE8 · BDD8E9
+═══════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&display=swap');
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  background: transparent !important;
+  overflow: hidden;
+  width: 100%; height: 100%;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --c1:  #001D39;   /* darkest navy */
+  --c2:  #0A4174;   /* deep blue */
+  --c3:  #49769F;   /* steel blue */
+  --c4:  #4E8EA2;   /* teal blue */
+  --c5:  #6EA2B3;   /* muted sky */
+  --c6:  #7BBDE8;   /* light blue */
+  --c7:  #BDD8E9;   /* pale blue */
+
+  --glass-bg:     rgba(0, 29, 57, 0.55);
+  --glass-border: rgba(123, 189, 232, 0.18);
+  --glass-shine:  rgba(189, 216, 233, 0.08);
+  --text:         #e8f4fd;
+  --text-dim:     rgba(189, 216, 233, 0.45);
+  --text-muted:   rgba(110, 162, 179, 0.6);
+
+  --accent:       #7BBDE8;
+  --accent-glow:  rgba(123, 189, 232, 0.3);
+  --warn:         #f0a500;
+  --warn-glow:    rgba(240, 165, 0, 0.3);
+  --danger:       #e05c5c;
+  --green:        #4ade80;
+  --green-glow:   rgba(74, 222, 128, 0.3);
+
+  --radius:       14px;
+  --radius-sm:    8px;
+  --blur:         20px;
+}
+
+/* ── Root wrapper ─────────────────────────────────────── */
+#root {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+  padding: 2px;
+}
+#root:hover { opacity: 1; }
+
+/* ── Win11 Acrylic panel ─────────────────────────────── */
+.panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 var(--glass-shine);
+  overflow: hidden;
+  width: 260px;
+  flex: 0 0 260px;
+  position: relative;
+}
+
+/* Subtle top shine line — Win11 characteristic */
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 12px; right: 12px;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(189,216,233,0.35) 30%,
+    rgba(189,216,233,0.35) 70%,
+    transparent);
+  border-radius: 1px;
+}
+
+/* ── Panel header ─────────────────────────────────────── */
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 14px 10px;
+  background: rgba(10, 65, 116, 0.3);
+  border-bottom: 1px solid rgba(123,189,232,0.1);
+}
+
+.header-icon { font-size: 15px; line-height: 1; }
+
+.header-title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--c7);
+}
+
+.header-badge {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+/* ── GSI status strip ─────────────────────────────────── */
+.gsi-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 14px;
+  background: rgba(0,0,0,0.15);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.gsi-left { display: flex; align-items: center; gap: 6px; }
+
+.gsi-pill {
+  display: flex; align-items: center; gap: 5px;
+  padding: 2px 8px 2px 6px;
+  background: rgba(0,29,57,0.5);
+  border: 1px solid rgba(123,189,232,0.15);
+  border-radius: 20px;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.8px;
+  color: var(--text-muted);
+  transition: all 0.3s;
+}
+.gsi-pill.live {
+  border-color: rgba(74,222,128,0.4);
+  color: var(--green);
+}
+
+.gsi-led {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 5px var(--danger);
+  animation: blink 1.4s ease infinite;
+  transition: all 0.3s;
+}
+.gsi-led.on {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green-glow);
+  animation: none;
+}
+
+#clock-display {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 2px; color: var(--c6);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+
+/* ── Roshan status row ────────────────────────────────── */
+.rosh-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 4px;
+}
+
+.status-badge {
+  display: flex; align-items: center; gap: 7px;
+}
+
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green-glow);
+  animation: pulse-green 2s ease infinite;
+  transition: all 0.3s;
+}
+.status-dot.dead   { background: var(--danger); box-shadow: 0 0 8px rgba(224,92,92,0.4); animation: none; }
+.status-dot.window { background: var(--warn);   box-shadow: 0 0 8px var(--warn-glow);    animation: none; }
+
+@keyframes pulse-green {
+  0%,100% { transform: scale(1);   box-shadow: 0 0 6px var(--green-glow); }
+  50%     { transform: scale(1.3); box-shadow: 0 0 12px var(--green-glow); }
+}
+
+#status-txt {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 1.5px; color: var(--text);
+  text-transform: uppercase;
+}
+
+#kill-lbl {
+  font-size: 9px; font-weight: 600;
+  color: var(--text-muted); letter-spacing: 1px;
+}
+
+/* ── Big timer ────────────────────────────────────────── */
+.timer-center {
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 8px 14px 10px;
+}
+
+#big-timer {
+  font-size: 42px; font-weight: 700;
+  letter-spacing: 3px; line-height: 1;
+  color: var(--c7);
+  text-shadow: 0 0 20px rgba(189,216,233,0.4);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s, text-shadow 0.3s;
+}
+#big-timer.alive {
+  color: var(--green);
+  text-shadow: 0 0 24px var(--green-glow);
+  animation: timer-alive 1.8s ease infinite;
+}
+#big-timer.warn {
+  color: var(--warn);
+  text-shadow: 0 0 24px var(--warn-glow);
+}
+#big-timer.spawned {
+  color: var(--green);
+  text-shadow: 0 0 30px var(--green-glow);
+  animation: timer-alive 0.8s ease infinite;
+}
+
+@keyframes timer-alive {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0.75; }
+}
+
+#timer-lbl {
+  margin-top: 3px;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Spawn window progress bar ────────────────────────── */
+.win-bar-wrap {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 14px 6px;
+}
+.win-bar-wrap.show { display: flex; }
+
+.win-bar-track {
+  height: 3px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.win-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--c4), var(--c6));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+.win-bar-labels {
+  display: flex; justify-content: space-between;
+  font-size: 8px; font-weight: 600;
+  letter-spacing: 0.8px; color: var(--text-muted);
+}
+
+/* ── Action buttons ───────────────────────────────────── */
+.btn-row {
+  display: flex; gap: 7px;
+  padding: 8px 14px 10px;
+}
+
+.btn {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+  font-family: inherit;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative; overflow: hidden;
+}
+
+.btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0);
+  transition: background 0.15s;
+}
+.btn:hover::after { background: rgba(255,255,255,0.06); }
+.btn:active::after { background: rgba(255,255,255,0.12); }
+
+.btn-danger {
+  background: rgba(224,92,92,0.12);
+  border-color: rgba(224,92,92,0.35);
+  color: #f08080;
+}
+.btn-danger:hover {
+  background: rgba(224,92,92,0.22);
+  border-color: rgba(224,92,92,0.6);
+  box-shadow: 0 0 12px rgba(224,92,92,0.2);
+}
+
+.btn-secondary {
+  background: rgba(123,189,232,0.07);
+  border-color: rgba(123,189,232,0.2);
+  color: var(--c6);
+}
+.btn-secondary:hover {
+  background: rgba(123,189,232,0.15);
+  border-color: rgba(123,189,232,0.4);
+}
+
+/* ── Info rows ────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: rgba(255,255,255,0.05);
+  margin: 0 14px;
+}
+
+.info-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 14px;
+}
+
+.info-label {
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+#aegis-val {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; color: var(--c6);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s;
+}
+
+/* Cheese dots */
+.cheese-dots { display: flex; gap: 5px; align-items: center; }
+.cdot {
+  width: 9px; height: 9px; border-radius: 50%;
+  border: 1.5px solid rgba(123,189,232,0.2);
+  background: transparent;
+  transition: all 0.3s;
+}
+.cdot.on {
+  background: #ffd740;
+  border-color: #ffd740;
+  box-shadow: 0 0 7px rgba(255,215,64,0.6);
+}
+
+/* ══════════════════════════════════════════════════════
+   RUNE CARDS
+══════════════════════════════════════════════════════ */
+.rune-section-body { padding: 10px 12px 12px; }
+
+.rune-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.rcard {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: 10px 6px 8px;
+  background: rgba(10,65,116,0.25);
+  border: 1px solid rgba(123,189,232,0.1);
+  border-radius: var(--radius-sm);
+  transition: all 0.25s ease;
+  position: relative; overflow: hidden;
+}
+
+.rcard::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(189,216,233,0.2), transparent);
+}
+
+.rcard.ready {
+  background: rgba(123,189,232,0.12);
+  border-color: rgba(123,189,232,0.45);
+  box-shadow: 0 0 14px rgba(123,189,232,0.15), inset 0 0 12px rgba(123,189,232,0.05);
+  animation: card-pulse 0.7s ease infinite alternate;
+}
+.rcard.ready-wisdom {
+  background: rgba(168,130,220,0.12);
+  border-color: rgba(168,130,220,0.45);
+  box-shadow: 0 0 14px rgba(168,130,220,0.18);
+  animation: card-pulse-wisdom 0.7s ease infinite alternate;
+}
+.rcard.warning {
+  background: rgba(240,165,0,0.08);
+  border-color: rgba(240,165,0,0.35);
+}
+
+@keyframes card-pulse        { from{box-shadow:0 0 8px rgba(123,189,232,0.15)}  to{box-shadow:0 0 20px rgba(123,189,232,0.45)} }
+@keyframes card-pulse-wisdom { from{box-shadow:0 0 8px rgba(168,130,220,0.15)}  to{box-shadow:0 0 20px rgba(168,130,220,0.45)} }
+
+.ricon { font-size: 20px; line-height: 1; }
+.rname {
+  font-size: 8px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.rtimer {
+  font-size: 16px; font-weight: 700;
+  letter-spacing: 2px; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s;
+}
+.rtimer.blue   { color: var(--c6);   text-shadow: 0 0 10px var(--accent-glow); }
+.rtimer.purple { color: #c4a0e8;     text-shadow: 0 0 10px rgba(168,130,220,0.5); }
+.rtimer.warn   { color: var(--warn); }
+
+.rsub {
+  font-size: 7px; font-weight: 600;
+  letter-spacing: 0.5px; color: var(--text-muted);
+  opacity: 0.7;
+}
+.rsub.live { color: var(--green); opacity: 1; }
+
+/* Sync label in rune header */
+#rune-sync-lbl {
+  font-size: 8px; font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--green);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+#rune-sync-lbl.visible { opacity: 1; }
+
+/* ══════════════════════════════════════════════════════
+   FLASH OVERLAYS
+══════════════════════════════════════════════════════ */
+.flash {
+  position: fixed; inset: 0; pointer-events: none;
+  border-radius: var(--radius); border: 2px solid;
+  opacity: 0; transition: opacity 0.1s;
+  z-index: 9999;
+}
+#fl-rosh   { border-color: var(--warn);   box-shadow: inset 0 0 40px rgba(240,165,0,0.15); }
+#fl-rune   { border-color: var(--c6);     box-shadow: inset 0 0 40px rgba(123,189,232,0.12); }
+#fl-wisdom { border-color: #c4a0e8;       box-shadow: inset 0 0 40px rgba(168,130,220,0.15); }
+.flash.on  { opacity: 1; }
+
+/* ══════════════════════════════════════════════════════
+   CLOSE BUTTON
+══════════════════════════════════════════════════════ */
+.close-btn {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(224,92,92,0.08);
+  border: 1px solid rgba(224,92,92,0.2);
+  border-radius: 6px;
+  color: rgba(224,92,92,0.45);
+  font-size: 10px; cursor: pointer;
+  transition: all 0.18s;
+}
+.close-btn:hover {
+  background: rgba(224,92,92,0.2);
+  border-color: rgba(224,92,92,0.5);
+  color: #f08080;
+}
+</style>
+</head>
+<body>
+
+<div class="flash" id="fl-rosh"></div>
+<div class="flash" id="fl-rune"></div>
+<div class="flash" id="fl-wisdom"></div>
+
+<div id="root">
+
+  <!-- ══ ROSHAN ══════════════════════════════════════ -->
+  <div class="panel">
+
+    <div class="panel-header">
+      <span class="header-icon">💀</span>
+      <span class="header-title">Roshan</span>
+      <span class="header-badge" id="kill-lbl">KILL #0</span>
+    </div>
+
+    <div class="gsi-strip">
+      <div class="gsi-left">
+        <div class="gsi-pill" id="gsi-pill">
+          <span class="gsi-led" id="gsi-led"></span>
+          <span id="gsi-label">NO GSI</span>
+        </div>
+      </div>
+      <span id="clock-display">--:--</span>
+    </div>
+
+    <div class="rosh-row">
+      <div class="status-badge">
+        <div class="status-dot" id="dot"></div>
+        <span id="status-txt">ALIVE</span>
+      </div>
+    </div>
+
+    <div class="timer-center">
+      <div id="big-timer" class="alive">ALIVE</div>
+      <div id="timer-lbl">Roshan is alive</div>
+    </div>
+
+    <div class="win-bar-wrap" id="win-bar">
+      <div class="win-bar-track">
+        <div class="win-bar-fill" id="win-fill" style="width:0%"></div>
+      </div>
+      <div class="win-bar-labels">
+        <span id="lbl-min">8 min ✓</span>
+        <span id="lbl-max">11 min —</span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-danger"    onclick="roshKilled()">☠  Rosh Died</button>
+      <button class="btn btn-secondary" onclick="resetRosh()">↺  Reset</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="info-row">
+      <span class="info-label">⬡ Aegis expires</span>
+      <span id="aegis-val">—</span>
+    </div>
+
+    <div class="info-row" style="padding-top:4px;padding-bottom:10px;">
+      <span class="info-label">🧀 Cheese</span>
+      <div class="cheese-dots">
+        <div class="cdot" id="c0"></div>
+        <div class="cdot" id="c1"></div>
+        <div class="cdot" id="c2"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ RUNES ════════════════════════════════════════ -->
+  <div class="panel">
+
+    <div class="panel-header">
+      <span class="header-icon">✨</span>
+      <span class="header-title">Runes</span>
+      <span id="rune-sync-lbl">● AUTO</span>
+    </div>
+
+    <div class="rune-section-body">
+      <div class="rune-grid">
+
+        <div class="rcard" id="rc-bounty">
+          <div class="ricon">💰</div>
+          <div class="rname">Bounty</div>
+          <div class="rtimer" id="rt-bounty">—</div>
+          <div class="rsub" id="sb-bounty">every 3 min</div>
+        </div>
+
+        <div class="rcard" id="rc-power">
+          <div class="ricon">⚡</div>
+          <div class="rname">Power</div>
+          <div class="rtimer" id="rt-power">—</div>
+          <div class="rsub" id="sb-power">every 2 min</div>
+        </div>
+
+        <div class="rcard" id="rc-wisdom">
+          <div class="ricon">📖</div>
+          <div class="rname">Wisdom</div>
+          <div class="rtimer" id="rt-wisdom">—</div>
+          <div class="rsub" id="sb-wisdom">every 7 min</div>
+        </div>
+
+        <div class="rcard" id="rc-lotus">
+          <div class="ricon">🌸</div>
+          <div class="rname">Lotus</div>
+          <div class="rtimer" id="rt-lotus">—</div>
+          <div class="rsub" id="sb-lotus">every 3 min</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div><!-- #root -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  AUDIO — force-unlock AudioContext for PyQt6 WebEngine
+// ═══════════════════════════════════════════════════════════
+let _ac = null;
+function ac() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (_ac.state === 'suspended') _ac.resume();
+  return _ac;
+}
+function unlockAudio() {
+  const ctx = ac();
+  if (ctx.state === 'suspended') ctx.resume();
+}
+['click','mousedown','keydown','touchstart'].forEach(e =>
+  document.addEventListener(e, unlockAudio));
+window.addEventListener('load', () => {
+  [100, 500, 1500].forEach(t => setTimeout(unlockAudio, t));
+});
+
+function tone(f, type, start, dur, gain) {
+  const ctx = ac(), o = ctx.createOscillator(), e = ctx.createGain();
+  o.connect(e); e.connect(ctx.destination);
+  o.type = type; o.frequency.value = f;
+  e.gain.setValueAtTime(0, start);
+  e.gain.linearRampToValueAtTime(gain, start + 0.03);
+  e.gain.linearRampToValueAtTime(0, start + dur);
+  o.start(start); o.stop(start + dur + 0.05);
+}
+function playRoshSpawn() {
+  const now = ac().currentTime;
+  [[55,0,0.9,0.45],[110,0.1,0.8,0.3],[220,0.25,0.7,0.22],[440,0.4,0.55,0.14]].forEach(([f,s,d,g]) => {
+    const ctx=ac(), o=ctx.createOscillator(), e=ctx.createGain();
+    o.connect(e); e.connect(ctx.destination); o.type='sawtooth';
+    o.frequency.setValueAtTime(f, now+s); o.frequency.linearRampToValueAtTime(f*1.6, now+s+d);
+    e.gain.setValueAtTime(0,now+s); e.gain.linearRampToValueAtTime(g,now+s+0.04); e.gain.linearRampToValueAtTime(0,now+s+d);
+    o.start(now+s); o.stop(now+s+d+0.05);
+  });
+}
+function playRoshWindow() {
+  const now = ac().currentTime;
+  [0,0.18,0.36].forEach(d => tone(1046,'triangle',now+d,0.14,0.12));
+}
+function playRuneSpawn() {
+  const now = ac().currentTime;
+  [523,659,784,1047].forEach((f,i) => tone(f,'sine',now+i*0.1,0.25,0.14));
+}
+function playWisdomSpawn() {
+  const now = ac().currentTime;
+  [523,659,880].forEach(f => tone(f,'sine',now,0.7,0.09));
+  [1047,880,698,523].forEach((f,i) => tone(f,'triangle',now+i*0.15,0.25,0.13));
+}
+function playWarn(isWisdom) {
+  const now = ac().currentTime, f = isWisdom ? 830 : 660;
+  [0,0.12].forEach(d => tone(f,'sine',now+d,0.1,0.1));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FLASH
+// ═══════════════════════════════════════════════════════════
+function flash(id, count=6, ms=200) {
+  const el = document.getElementById(id); let n = 0;
+  el.classList.add('on');
+  const iv = setInterval(() => {
+    el.classList.toggle('on');
+    if (++n >= count) { clearInterval(iv); el.classList.remove('on'); }
+  }, ms);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════
+function fmt(s) {
+  if (s <= 0) return '00:00';
+  const m = Math.floor(s/60), sec = Math.floor(s%60);
+  return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+}
+function fmtClock(s) {
+  const abs = Math.abs(s), neg = s < 0;
+  const m = Math.floor(abs/60), sec = Math.floor(abs%60);
+  return (neg?'-':'') + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STATE / VISIBILITY
+// ═══════════════════════════════════════════════════════════
+let gameClock    = null;
+let gsiConnected = false;
+let lastGsiTime  = 0;
+let overlayVisible = true;
+let overlayOpacity = 50;
+
+function setOpacity(pct) {
+  overlayOpacity = pct;
+  document.getElementById('root').style.opacity = pct / 100;
+}
+function setVisible(v) {
+  overlayVisible = v;
+  document.getElementById('root').style.display = v ? 'inline-flex' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WEBSOCKET
+// ═══════════════════════════════════════════════════════════
+function connectWS() {
+  const ws = new WebSocket('ws://127.0.0.1:3001');
+  ws.onmessage = (evt) => {
+    try {
+      const d = JSON.parse(evt.data);
+      if (d.command) {
+        switch(d.command) {
+          case 'toggle':          setVisible(!overlayVisible); break;
+          case 'show':            setVisible(true);  break;
+          case 'hide':            setVisible(false); break;
+          case 'opacity:100':     setOpacity(100);   break;
+          case 'opacity:50':      setOpacity(50);    break;
+          case 'opacity:toggle':  setOpacity(overlayOpacity >= 90 ? 50 : 100); break;
+          default:
+            if (d.command.startsWith('opacity:')) {
+              const n = parseInt(d.command.split(':')[1]);
+              if (!isNaN(n)) setOpacity(Math.max(0, Math.min(100, n)));
+            }
+        }
+        return;
+      }
+      gameClock    = d.clock_time;
+      gsiConnected = d.connected;
+      lastGsiTime  = Date.now();
+      updateGSIBar();
+      onClockUpdate();
+    } catch(e) {}
+  };
+  ws.onclose = () => { gsiConnected = false; updateGSIBar(); setTimeout(connectWS, 2000); };
+  ws.onerror = () => ws.close();
+}
+
+function updateGSIBar() {
+  const fresh = (Date.now() - lastGsiTime) < 5000;
+  const live  = gsiConnected && fresh && gameClock !== null;
+
+  const led   = document.getElementById('gsi-led');
+  const pill  = document.getElementById('gsi-pill');
+  const lbl   = document.getElementById('gsi-label');
+  const clk   = document.getElementById('clock-display');
+  const syncL = document.getElementById('rune-sync-lbl');
+
+  led.className  = 'gsi-led' + (live ? ' on' : '');
+  pill.className = 'gsi-pill' + (live ? ' live' : '');
+  lbl.textContent = live ? 'GSI LIVE' : (gsiConnected ? 'WAITING' : 'NO GSI');
+  clk.textContent = gameClock !== null ? fmtClock(gameClock) : '--:--';
+  syncL.className = live ? 'visible' : '';
+}
+
+connectWS();
+setInterval(updateGSIBar, 1000);
+
+// ═══════════════════════════════════════════════════════════
+//  RUNE TIMERS
+// ═══════════════════════════════════════════════════════════
+const RUNE_SCHEDULE = {
+  bounty: { start:   0, interval:180, label:'every 3 min', warn:30, wisdom:false },
+  power:  { start: 120, interval:120, label:'every 2 min', warn:30, wisdom:false },
+  lotus:  { start: 180, interval:180, label:'every 3 min', warn:30, wisdom:false },
+  wisdom: { start: 420, interval:420, label:'7 / 14 / 21…', warn:45, wisdom:true  },
+};
+const runeAlerted = {};
+
+function nextRuneSpawn(name, t) {
+  const cfg = RUNE_SCHEDULE[name];
+  if (t < cfg.start) return cfg.start;
+  return cfg.start + (Math.floor((t - cfg.start) / cfg.interval) + 1) * cfg.interval;
+}
+
+function updateRuneCard(name, t) {
+  const cfg  = RUNE_SCHEDULE[name];
+  const next = nextRuneSpawn(name, t);
+  const rem  = next - t;
+  const key  = name + ':' + next;
+  const card = document.getElementById('rc-' + name);
+  const tmr  = document.getElementById('rt-' + name);
+  const sub  = document.getElementById('sb-' + name);
+  const isW  = cfg.wisdom;
+
+  if (rem <= 0 && rem > -2) {
+    if (!runeAlerted[key]) {
+      runeAlerted[key] = true;
+      isW ? (playWisdomSpawn(), flash('fl-wisdom',8,180)) : (playRuneSpawn(), flash('fl-rune',6,200));
+    }
+    tmr.textContent = 'NOW';
+    tmr.className   = 'rtimer ' + (isW ? 'purple' : 'blue');
+    card.className  = 'rcard ' + (isW ? 'ready-wisdom' : 'ready');
+    sub.textContent = 'Spawn now!';
+    sub.className   = 'rsub live';
+    return;
+  }
+
+  const wKey = name + ':warn:' + next;
+  if (rem <= cfg.warn && rem > 0 && !runeAlerted[wKey]) {
+    runeAlerted[wKey] = true;
+    playWarn(isW);
+  }
+
+  if (rem <= cfg.warn && rem > 0) {
+    tmr.textContent = fmt(rem);
+    tmr.className   = 'rtimer warn';
+    card.className  = 'rcard warning';
+  } else if (rem > 0) {
+    tmr.textContent = fmt(rem);
+    tmr.className   = 'rtimer';
+    card.className  = 'rcard';
+  }
+
+  sub.textContent = cfg.label;
+  sub.className   = 'rsub';
+
+  // Cleanup old keys
+  for (const k of Object.keys(runeAlerted)) {
+    const ts = parseInt(k.split(':').pop());
+    if (!isNaN(ts) && ts < t - 30) delete runeAlerted[k];
+  }
+}
+
+function updateAllRunes(t) {
+  ['bounty','power','wisdom','lotus'].forEach(n => updateRuneCard(n, t));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ROSHAN
+// ═══════════════════════════════════════════════════════════
+const ROSH_MIN=480, ROSH_MAX=660, AEGIS=300;
+let rPhase='alive', roshKillClock=null, killCount=0, roshSoundDone=false, roshWarnDone=false;
+
+function updateRosh(t) {
+  const big  = document.getElementById('big-timer');
+  const lbl  = document.getElementById('timer-lbl');
+  const dot  = document.getElementById('dot');
+  const stxt = document.getElementById('status-txt');
+  const wbar = document.getElementById('win-bar');
+  const wfil = document.getElementById('win-fill');
+  const aeg  = document.getElementById('aegis-val');
+
+  if (roshKillClock !== null) {
+    const ar = (roshKillClock + AEGIS) - t;
+    aeg.textContent = ar > 0 ? fmt(ar) : 'Expired';
+    aeg.style.color = ar > 0 ? (ar < 60 ? 'var(--danger)' : 'var(--c6)') : 'var(--text-muted)';
+  }
+
+  if (rPhase === 'alive') {
+    big.textContent='ALIVE'; big.className='alive';
+    lbl.textContent='Roshan is alive';
+    dot.className='status-dot'; stxt.textContent='ALIVE';
+    wbar.classList.remove('show'); return;
+  }
+
+  const elapsed = t - roshKillClock;
+  const toMin   = Math.max(0, ROSH_MIN - elapsed);
+  const toMax   = Math.max(0, ROSH_MAX - elapsed);
+
+  if (elapsed >= ROSH_MAX && rPhase !== 'spawned') {
+    rPhase = 'spawned';
+    if (!roshSoundDone) { playRoshSpawn(); flash('fl-rosh',8,180); roshSoundDone=true; }
+  } else if (elapsed >= ROSH_MIN && rPhase === 'dead') {
+    rPhase = 'window';
+    if (!roshWarnDone) { playRoshWindow(); roshWarnDone=true; }
+  }
+
+  if (rPhase === 'dead') {
+    big.textContent=fmt(toMin); big.className=toMin<60?'warn':'';
+    lbl.textContent='Minimum spawn in';
+    dot.className='status-dot dead'; stxt.textContent='DEAD';
+    wbar.classList.remove('show');
+  } else if (rPhase === 'window') {
+    big.textContent=fmt(toMax); big.className='warn';
+    lbl.textContent='Spawn window — max in';
+    dot.className='status-dot window'; stxt.textContent='WINDOW';
+    const pct=Math.min(100,((elapsed-ROSH_MIN)/(ROSH_MAX-ROSH_MIN))*100);
+    wfil.style.width=pct+'%';
+    document.getElementById('lbl-max').textContent='11 min — ' + fmt(toMax);
+    wbar.classList.add('show');
+  } else if (rPhase === 'spawned') {
+    big.textContent='BACK'; big.className='spawned';
+    lbl.textContent='Roshan has respawned!';
+    dot.className='status-dot'; stxt.textContent='SPAWNED';
+    wfil.style.width='100%';
+    wbar.classList.add('show');
+  }
+}
+
+function onClockUpdate() {
+  if (gameClock === null || gameClock < 0) return;
+  updateRosh(gameClock);
+  updateAllRunes(gameClock);
+}
+
+setInterval(() => {
+  if (gameClock !== null && gsiConnected) {
+    gameClock += 0.5;
+    updateGSIBar();
+    if (gameClock >= 0) onClockUpdate();
+  }
+}, 500);
+
+function roshKilled() {
+  if (gameClock === null) { alert('Waiting for GSI — start a Dota 2 game first.'); return; }
+  roshKillClock = gameClock;
+  killCount++;
+  roshSoundDone = roshWarnDone = false;
+  rPhase = 'dead';
+  document.getElementById('kill-lbl').textContent = 'KILL #' + killCount;
+  [0,1,2].forEach(i => document.getElementById('c'+i).classList.toggle('on', killCount >= i+2));
+  onClockUpdate();
+}
+
+function resetRosh() {
+  rPhase='alive'; roshKillClock=null; roshSoundDone=roshWarnDone=false;
+  document.getElementById('aegis-val').textContent='—';
+  document.getElementById('aegis-val').style.color='var(--c6)';
+  [0,1,2].forEach(i => document.getElementById('c'+i).classList.remove('on'));
+  onClockUpdate();
+}
+
+async function closeOverlay() {
+  if (window.pywebview?.api) await window.pywebview.api.close_overlay();
+}
+
+updateGSIBar();
+</script>
+</body>
+</html>
